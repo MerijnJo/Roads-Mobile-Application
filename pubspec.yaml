@@ -1,0 +1,14 @@
+name: roads_mobile_application
+description: A new Flutter project for the Roads Mobile Application.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
