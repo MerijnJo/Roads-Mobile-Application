@@ -2,15 +2,6 @@
 
 > **A smart mobile application for discovering and experiencing unique driving routes.**
 
-##  Table of Contents
-
-  * [About](https://www.google.com/search?q=%23-about)
-  * [Project Goals](https://www.google.com/search?q=%23-project-goals)
-  * [Tech Stack](https://www.google.com/search?q=%23%25EF%25B8%258F-tech-stack)
-  * [Key Features](https://www.google.com/search?q=%23-key-features)
-  * [Getting Started](https://www.google.com/search?q=%23-getting-started)
-  * [Learning Outcomes](https://www.google.com/search?q=%23-learning-outcomes)
-
 ##  About
 
 **Roads** is a mobile application built with **Flutter** that allows users to find driving routes in both well-known and hidden locations. The app focuses on the discovery of scenic or interesting paths rather than just the fastest commute.
@@ -75,9 +66,3 @@ flutter run
   - [ ] POI information system implementation
   - [ ] AI model integration for driving style analysis
   - [ ] Personalized route recommendation engine
-
-##  Contact
-
-**[Your Name]** - [Your Email/Contact Info]
-
-Project Link: [https://github.com/[your-username]/roads](https://www.google.com/search?q=https://github.com/%5Byour-username%5D/roads)
