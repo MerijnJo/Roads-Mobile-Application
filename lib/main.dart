@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
-import 'features/map/screens/map_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const RoadsApp());
+import 'features/map/screens/map_screen.dart';
+import 'features/map/repositories/local_route_repository.dart';
+import 'features/map/repositories/route_repository.dart';
+import 'features/map/repositories/supabase_route_repository.dart';
+
+const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const _supabasePublishableKey = String.fromEnvironment(
+  'SUPABASE_PUBLISHABLE_KEY',
+);
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final routeRepository = await _createRouteRepository();
+
+  runApp(RoadsApp(routeRepository: routeRepository));
 }
 
 class RoadsApp extends StatelessWidget {
-  const RoadsApp({super.key});
+  const RoadsApp({
+    required this.routeRepository,
+    super.key,
+  });
+
+  final RouteRepository routeRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +34,20 @@ class RoadsApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MapScreen(),
+      home: MapScreen(routeRepository: routeRepository),
     );
   }
+}
+
+Future<RouteRepository> _createRouteRepository() async {
+  if (_supabaseUrl.isEmpty || _supabasePublishableKey.isEmpty) {
+    return const LocalRouteRepository();
+  }
+
+  await Supabase.initialize(
+    url: _supabaseUrl,
+    anonKey: _supabasePublishableKey,
+  );
+
+  return SupabaseRouteRepository(Supabase.instance.client);
 }

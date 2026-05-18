@@ -57,6 +57,18 @@ flutter pub get
 flutter run
 ```
 
+For Supabase-backed development, create a private local runner:
+
+```powershell
+Copy-Item scripts/run_dev.example.ps1 scripts/run_dev.ps1
+```
+
+Edit `scripts/run_dev.ps1` with your Supabase URL and publishable key, then run:
+
+```powershell
+.\scripts\run_dev.ps1
+```
+
 ##  Architecture & Standards
 
   * **Feature-First Structure:** Code is organized by feature (e.g., `map`, `discover`, `profile`) for maximum scalability and maintainability.

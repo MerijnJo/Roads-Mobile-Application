@@ -121,6 +121,7 @@ app.*.symbols
 # Environment variables and secrets
 .env
 .env.*
+scripts/run_dev.ps1
 
 # OS specific generated files
 .DS_Store

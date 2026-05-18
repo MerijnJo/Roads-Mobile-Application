@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../models/point_of_interest.dart';
+import '../models/route_stop.dart';
+import '../models/scenic_route.dart';
 
 class RoutePreviewSheet extends StatelessWidget {
   const RoutePreviewSheet({
-    required this.pointsOfInterest,
-    required this.selectedPoi,
-    required this.onPoiSelected,
+    required this.routes,
+    required this.selectedRoute,
+    required this.selectedStop,
+    required this.onRouteSelected,
+    required this.onStopSelected,
     super.key,
   });
 
-  final List<PointOfInterest> pointsOfInterest;
-  final PointOfInterest selectedPoi;
-  final ValueChanged<PointOfInterest> onPoiSelected;
+  final List<ScenicRoute> routes;
+  final ScenicRoute selectedRoute;
+  final RouteStop selectedStop;
+  final ValueChanged<ScenicRoute> onRouteSelected;
+  final ValueChanged<RouteStop> onStopSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +49,7 @@ class RoutePreviewSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      selectedPoi.routeName,
+                      selectedRoute.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.titleMedium?.copyWith(
@@ -54,7 +59,7 @@ class RoutePreviewSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    selectedPoi.distanceLabel,
+                    '${selectedRoute.distanceLabel} | ${selectedRoute.durationLabel}',
                     style: textTheme.labelLarge?.copyWith(
                       color: colorScheme.primary,
                       fontWeight: FontWeight.w700,
@@ -62,16 +67,25 @@ class RoutePreviewSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                selectedPoi.name,
+                selectedRoute.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                selectedStop.name,
                 style: textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                selectedPoi.description,
+                selectedStop.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: textTheme.bodyMedium?.copyWith(
@@ -83,20 +97,41 @@ class RoutePreviewSheet extends StatelessWidget {
                 height: 44,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: pointsOfInterest.length,
+                  itemCount: selectedRoute.stops.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final poi = pointsOfInterest[index];
-                    final isSelected = poi.id == selectedPoi.id;
+                    final stop = selectedRoute.stops[index];
+                    final isSelected = stop.id == selectedStop.id;
 
                     return ChoiceChip(
                       selected: isSelected,
-                      label: Text(poi.name),
-                      onSelected: (_) => onPoiSelected(poi),
+                      label: Text(stop.name),
+                      onSelected: (_) => onStopSelected(stop),
                     );
                   },
                 ),
               ),
+              if (routes.length > 1) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: routes.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final route = routes[index];
+                      final isSelected = route.id == selectedRoute.id;
+
+                      return ChoiceChip(
+                        selected: isSelected,
+                        label: Text(route.name),
+                        onSelected: (_) => onRouteSelected(route),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),

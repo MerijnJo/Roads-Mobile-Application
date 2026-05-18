@@ -1,13 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../models/point_of_interest.dart';
-import '../widgets/poi_marker.dart';
+import '../models/route_stop.dart';
+import '../models/scenic_route.dart';
+import '../repositories/local_route_repository.dart';
+import '../repositories/route_repository.dart';
 import '../widgets/route_preview_sheet.dart';
+import '../widgets/route_stop_marker.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({
+    this.routeRepository = const LocalRouteRepository(),
+    super.key,
+  });
+
+  final RouteRepository routeRepository;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -16,40 +25,33 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
 
-  static const _initialCenter = LatLng(51.9851, 5.8987);
+  late final Future<List<ScenicRoute>> _routesFuture;
+  ScenicRoute? _selectedRoute;
+  RouteStop? _selectedStop;
 
-  final List<PointOfInterest> _pointsOfInterest = const [
-    PointOfInterest(
-      id: 'posbank-lookout',
-      name: 'Posbank Lookout',
-      description: 'A sweeping heathland viewpoint with winding roads nearby.',
-      routeName: 'Veluwe Ridge Drive',
-      position: LatLng(52.0244, 6.0144),
-      distanceLabel: '42 km',
-    ),
-    PointOfInterest(
-      id: 'rhine-bend',
-      name: 'Rhine Bend',
-      description: 'River views, small villages, and relaxed dike roads.',
-      routeName: 'Rhine Valley Scenic Loop',
-      position: LatLng(51.9706, 5.9041),
-      distanceLabel: '28 km',
-    ),
-    PointOfInterest(
-      id: 'castle-lane',
-      name: 'Castle Lane',
-      description: 'A calm forest lane passing estates and historic grounds.',
-      routeName: 'Estate Roads Explorer',
-      position: LatLng(52.0465, 5.8237),
-      distanceLabel: '35 km',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _routesFuture = widget.routeRepository.fetchFeaturedRoutes();
+  }
 
-  late PointOfInterest _selectedPoi = _pointsOfInterest.first;
+  void _selectRoute(ScenicRoute route) {
+    final firstStop = route.stops.first;
 
-  void _selectPoi(PointOfInterest poi) {
-    setState(() => _selectedPoi = poi);
-    _mapController.move(poi.position, 11.5);
+    setState(() {
+      _selectedRoute = route;
+      _selectedStop = firstStop;
+    });
+    _moveTo(route.center, 9);
+  }
+
+  void _selectStop(RouteStop stop) {
+    setState(() => _selectedStop = stop);
+    _moveTo(stop.position, 11);
+  }
+
+  void _moveTo(LatLng center, double zoom) {
+    _mapController.move(center, zoom);
   }
 
   @override
@@ -57,105 +59,203 @@ class _MapScreenState extends State<MapScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: _initialCenter,
-              initialZoom: 10,
-              minZoom: 7,
-              maxZoom: 17,
-            ),
+      body: FutureBuilder<List<ScenicRoute>>(
+        future: _routesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            if (kDebugMode) {
+              debugPrint('Failed to load routes: ${snapshot.error}');
+              debugPrintStack(stackTrace: snapshot.stackTrace);
+            }
+
+            return _MapMessage(
+              icon: Icons.cloud_off,
+              title: 'Routes unavailable',
+              message: 'Check the route source and try again.',
+              color: colorScheme.error,
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final routes = snapshot.data!;
+          if (routes.isEmpty) {
+            return _MapMessage(
+              icon: Icons.map_outlined,
+              title: 'No routes yet',
+              message: 'Add the first scenic route to start exploring.',
+              color: colorScheme.primary,
+            );
+          }
+
+          final selectedRoute = _selectedRoute ?? routes.first;
+          final selectedStop = _selectedStop ?? selectedRoute.stops.first;
+
+          return Stack(
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.roads_mobile_application',
-              ),
-              MarkerLayer(
-                markers: [
-                  for (final poi in _pointsOfInterest)
-                    Marker(
-                      point: poi.position,
-                      width: 52,
-                      height: 52,
-                      child: PoiMarker(
-                        poi: poi,
-                        isSelected: poi.id == _selectedPoi.id,
-                        onTap: () => _selectPoi(poi),
-                      ),
-                    ),
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: selectedRoute.center,
+                  initialZoom: 9,
+                  minZoom: 6,
+                  maxZoom: 17,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName:
+                        'com.example.roads_mobile_application',
+                  ),
+                  const RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution('OpenStreetMap contributors'),
+                    ],
+                  ),
+                  PolylineLayer(
+                    polylines: [
+                      for (final route in routes)
+                        Polyline(
+                          points: route.path,
+                          color: route.id == selectedRoute.id
+                              ? colorScheme.primary
+                              : colorScheme.outline,
+                          strokeWidth: route.id == selectedRoute.id ? 7 : 4,
+                        ),
+                    ],
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      for (final stop in selectedRoute.stops)
+                        Marker(
+                          point: stop.position,
+                          width: 52,
+                          height: 52,
+                          child: RouteStopMarker(
+                            stop: stop,
+                            isPrimary: stop.id == selectedStop.id,
+                            onTap: () => _selectStop(stop),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1F000000),
+                                blurRadius: 14,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Roads',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                Text(
+                                  'Discover scenic drives nearby',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton.filled(
+                        tooltip: 'Recenter route',
+                        onPressed: () => _moveTo(selectedRoute.center, 9),
+                        icon: const Icon(Icons.my_location),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: RoutePreviewSheet(
+                  routes: routes,
+                  selectedRoute: selectedRoute,
+                  selectedStop: selectedStop,
+                  onRouteSelected: _selectRoute,
+                  onStopSelected: _selectStop,
+                ),
               ),
             ],
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x1F000000),
-                            blurRadius: 14,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Roads',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            Text(
-                              'Discover scenic drives nearby',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton.filled(
-                    tooltip: 'Recenter map',
-                    onPressed: () => _selectPoi(_selectedPoi),
-                    icon: const Icon(Icons.my_location),
-                  ),
-                ],
-              ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MapMessage extends StatelessWidget {
+  const _MapMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: RoutePreviewSheet(
-              pointsOfInterest: _pointsOfInterest,
-              selectedPoi: _selectedPoi,
-              onPoiSelected: _selectPoi,
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
