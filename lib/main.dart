@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'features/map/screens/map_screen.dart';
 
 void main() {
   runApp(const RoadsApp());
@@ -11,12 +11,11 @@ class RoadsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Roads Mobile Application',
+      title: 'Roads',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(),
+      home: const MapScreen(),
     );
   }
 }

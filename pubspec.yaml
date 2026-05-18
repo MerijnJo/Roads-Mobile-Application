@@ -9,6 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/routes/
