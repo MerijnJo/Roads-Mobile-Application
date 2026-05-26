@@ -23,6 +23,9 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const double _overlayMaxWidth = 480;
+  static const LatLng _worldCenter = LatLng(20, 0);
+
   final MapController _mapController = MapController();
 
   late final Future<List<ScenicRoute>> _routesFuture;
@@ -36,13 +39,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _selectRoute(ScenicRoute route) {
-    final firstStop = route.stops.first;
-
     setState(() {
       _selectedRoute = route;
-      _selectedStop = firstStop;
+      _selectedStop = route.stops.first;
     });
     _moveTo(route.center, 9);
+  }
+
+  void _showWorld() {
+    setState(() {
+      _selectedRoute = null;
+      _selectedStop = null;
+    });
+    _moveTo(_worldCenter, 2);
   }
 
   void _selectStop(RouteStop stop) {
@@ -90,17 +99,22 @@ class _MapScreenState extends State<MapScreen> {
             );
           }
 
-          final selectedRoute = _selectedRoute ?? routes.first;
-          final selectedStop = _selectedStop ?? selectedRoute.stops.first;
+          final selectedRoute = _selectedRoute;
+          final selectedStop = selectedRoute == null
+              ? null
+              : _selectedStop ?? selectedRoute.stops.first;
+          final visibleRoutes = selectedRoute == null
+              ? const <ScenicRoute>[]
+              : <ScenicRoute>[selectedRoute];
 
           return Stack(
             children: [
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: selectedRoute.center,
-                  initialZoom: 9,
-                  minZoom: 6,
+                  initialCenter: _worldCenter,
+                  initialZoom: 2,
+                  minZoom: 2,
                   maxZoom: 17,
                 ),
                 children: [
@@ -117,88 +131,129 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   PolylineLayer(
                     polylines: [
-                      for (final route in routes)
+                      for (final route in visibleRoutes)
                         Polyline(
                           points: route.path,
-                          color: route.id == selectedRoute.id
-                              ? colorScheme.primary
-                              : colorScheme.outline,
-                          strokeWidth: route.id == selectedRoute.id ? 7 : 4,
+                          color: colorScheme.primary,
+                          strokeWidth: 7,
                         ),
                     ],
                   ),
                   MarkerLayer(
                     markers: [
-                      for (final stop in selectedRoute.stops)
-                        Marker(
-                          point: stop.position,
-                          width: 52,
-                          height: 52,
-                          child: RouteStopMarker(
-                            stop: stop,
-                            isPrimary: stop.id == selectedStop.id,
-                            onTap: () => _selectStop(stop),
+                      if (selectedRoute == null)
+                        for (final route in routes)
+                          Marker(
+                            point: route.stops.first.position,
+                            width: 52,
+                            height: 52,
+                            child: _RouteEntryMarker(
+                              route: route,
+                              onTap: () => _selectRoute(route),
+                            ),
+                          )
+                      else
+                        for (final stop in selectedRoute.stops)
+                          Marker(
+                            point: stop.position,
+                            width: 52,
+                            height: 52,
+                            child: RouteStopMarker(
+                              stop: stop,
+                              isPrimary: stop.id == selectedStop!.id,
+                              onTap: () => _selectStop(stop),
+                            ),
                           ),
-                        ),
                     ],
                   ),
                 ],
               ),
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x1F000000),
-                                blurRadius: 14,
-                                offset: Offset(0, 6),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: _overlayMaxWidth,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            fit: FlexFit.loose,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x1F000000),
+                                    blurRadius: 14,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Roads',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.w800),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
                                 ),
-                                Text(
-                                  'Discover scenic drives nearby',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: colorScheme.onSurfaceVariant,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Roads',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    if (selectedRoute != null)
+                                      ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 220),
+                                        child: Text(
+                                          selectedRoute.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
                                       ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          IconButton.filled(
+                            tooltip: selectedRoute == null
+                                ? 'World overview'
+                                : 'Back to world',
+                            onPressed: selectedRoute == null
+                                ? () => _moveTo(_worldCenter, 2)
+                                : _showWorld,
+                            icon: Icon(
+                              selectedRoute == null
+                                  ? Icons.public
+                                  : Icons.travel_explore,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      IconButton.filled(
-                        tooltip: 'Recenter route',
-                        onPressed: () => _moveTo(selectedRoute.center, 9),
-                        icon: const Icon(Icons.my_location),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -210,11 +265,53 @@ class _MapScreenState extends State<MapScreen> {
                   selectedStop: selectedStop,
                   onRouteSelected: _selectRoute,
                   onStopSelected: _selectStop,
+                  onWorldSelected: _showWorld,
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _RouteEntryMarker extends StatelessWidget {
+  const _RouteEntryMarker({
+    required this.route,
+    required this.onTap,
+  });
+
+  final ScenicRoute route;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Tooltip(
+      message: route.name,
+      child: GestureDetector(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colorScheme.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: colorScheme.surface, width: 4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.route,
+            color: colorScheme.onPrimary,
+            size: 25,
+          ),
+        ),
       ),
     );
   }
