@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'features/map/screens/map_screen.dart';
+import 'features/home/screens/explore_screen.dart';
 import 'features/map/repositories/local_route_repository.dart';
 import 'features/map/repositories/route_repository.dart';
 import 'features/map/repositories/supabase_route_repository.dart';
@@ -32,9 +32,14 @@ class RoadsApp extends StatelessWidget {
     return MaterialApp(
       title: 'Roads',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF007A63),
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FD),
+        useMaterial3: true,
       ),
-      home: MapScreen(routeRepository: routeRepository),
+      home: ExploreScreen(routeRepository: routeRepository),
     );
   }
 }

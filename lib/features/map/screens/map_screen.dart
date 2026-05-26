@@ -13,10 +13,12 @@ import '../widgets/route_stop_marker.dart';
 class MapScreen extends StatefulWidget {
   const MapScreen({
     this.routeRepository = const LocalRouteRepository(),
+    this.initialRouteId,
     super.key,
   });
 
   final RouteRepository routeRepository;
+  final String? initialRouteId;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -31,6 +33,7 @@ class _MapScreenState extends State<MapScreen> {
   late final Future<List<ScenicRoute>> _routesFuture;
   ScenicRoute? _selectedRoute;
   RouteStop? _selectedStop;
+  bool _useInitialRoute = true;
 
   @override
   void initState() {
@@ -42,6 +45,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedRoute = route;
       _selectedStop = route.stops.first;
+      _useInitialRoute = false;
     });
     _moveTo(route.center, 9);
   }
@@ -50,6 +54,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedRoute = null;
       _selectedStop = null;
+      _useInitialRoute = false;
     });
     _moveTo(_worldCenter, 2);
   }
@@ -61,6 +66,16 @@ class _MapScreenState extends State<MapScreen> {
 
   void _moveTo(LatLng center, double zoom) {
     _mapController.move(center, zoom);
+  }
+
+  ScenicRoute? _findRoute(List<ScenicRoute> routes, String id) {
+    for (final route in routes) {
+      if (route.id == id) {
+        return route;
+      }
+    }
+
+    return null;
   }
 
   @override
@@ -99,7 +114,10 @@ class _MapScreenState extends State<MapScreen> {
             );
           }
 
-          final selectedRoute = _selectedRoute;
+          final initialRoute = _useInitialRoute && widget.initialRouteId != null
+              ? _findRoute(routes, widget.initialRouteId!)
+              : null;
+          final selectedRoute = _selectedRoute ?? initialRoute;
           final selectedStop = selectedRoute == null
               ? null
               : _selectedStop ?? selectedRoute.stops.first;
@@ -112,8 +130,8 @@ class _MapScreenState extends State<MapScreen> {
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: _worldCenter,
-                  initialZoom: 2,
+                  initialCenter: selectedRoute?.center ?? _worldCenter,
+                  initialZoom: selectedRoute == null ? 2 : 9,
                   minZoom: 2,
                   maxZoom: 17,
                 ),
