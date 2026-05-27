@@ -24,9 +24,12 @@ class RouteStopMarker extends StatelessWidget {
         onTap: onTap,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: isPrimary ? colorScheme.primary : colorScheme.surface,
+            color: isPrimary ? const Color(0xFF007A63) : colorScheme.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: colorScheme.primary, width: 3),
+            border: Border.all(
+              color: isPrimary ? Colors.white : const Color(0xFF007A63),
+              width: 3,
+            ),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x33000000),
@@ -37,7 +40,7 @@ class RouteStopMarker extends StatelessWidget {
           ),
           child: Icon(
             isPrimary ? Icons.flag : Icons.place,
-            color: isPrimary ? colorScheme.onPrimary : colorScheme.primary,
+            color: isPrimary ? Colors.white : const Color(0xFF007A63),
             size: isPrimary ? 26 : 24,
           ),
         ),
